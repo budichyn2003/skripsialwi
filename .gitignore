@@ -1,0 +1,29 @@
+# 1. Virtual Environment (WAJIB diabaikan)
+venv/
+env/
+
+# 2. Dataset & Data Mentah (Ukurannya terlalu besar untuk GitHub)
+data/
+
+# 3. Model Weights / Bobot Model (File biner .h5 sangat besar)
+models/*.h5
+models/*.keras
+models/*.hdf5
+
+# 4. Output Eksperimen / Grafik (Bisa di-generate ulang, biar repo bersih)
+outputs/
+
+# 5. Python Cache & Compiled Files (File sistem otomatis)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 6. Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# 7. Konfigurasi IDE / Editor (Biar settingan lokal VSCode tidak ikut ter-push)
+.vscode/
+
+# 8. OS Generated Files (Sampah sistem operasi)
+.DS_Store
+Thumbs.db

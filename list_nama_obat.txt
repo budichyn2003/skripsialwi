@@ -1,0 +1,123 @@
+============================================================
+LIST NAMA OBAT
+============================================================
+
+Total Jenis Obat : 112
+Total Gambar     : 672
+
+------------------------------------------------------------
+Nama Obat                               Jumlah
+------------------------------------------------------------
+acc_long_600_mg                         6
+advil_ultra_forte                       6
+akineton_2_mg                           6
+algoflex_forte_dolo_400_mg              6
+algoflex_rapid_400_mg                   6
+algopyrin_500_mg                        6
+ambroxol_egis_30_mg                     6
+apranax_550_mg                          6
+aspirin_ultra_500_mg                    6
+atoris_20_mg                            6
+atorvastatin_teva_20_mg                 6
+betaloc_50_mg                           6
+bila_git                                6
+c_vitamin_teva_500_mg                   6
+calci_kid                               6
+cataflam_50_mg                          6
+cataflam_dolo_25_mg                     6
+cataflam_v_50_mg                        6
+cetirizin_10_mg                         6
+co_perineva_4_mg_1_25_mg                6
+co_xeter_20_mg_10_mg                    6
+cold_fx                                 6
+coldrex                                 6
+concor_10_mg                            6
+concor_5_mg                             6
+condrosulf_800_mg                       6
+controloc_20_mg                         6
+covercard_plus_10_mg_2_5_mg_5_mg        6
+coverex_4_mg                            6
+diclopram_75-mg_20-mg                   6
+donalgin_250_mg                         6
+dorithricin_mentol                      6
+doxazosin_hexal_4_mg                    6
+doxazosin_sandoz_uro_4_mg               6
+dulodet_60_mg                           6
+dulsevia_60_mg                          6
+enterol_250_mg                          6
+escitil_10_mg                           6
+favipiravir_meditop_200_mg              6
+frontin_0_25_mg                         6
+frontin_0_5_mg                          6
+furon_40_mg                             6
+ibumax_400_mg                           6
+indastad_1_5_mg                         6
+jutavit_c_vitamin                       6
+jutavit_cink                            6
+kalcium_magnezium_cink                  6
+kalium_r                                6
+ketodex_25_mg                           6
+koleszterin_kontroll                    6
+l_thyroxin_henning_50_mikrogramm        6
+lactamed                                6
+lactiv_plus                             6
+laresin_10_mg                           6
+letrox_50_mikrogramm                    6
+lordestin_5_mg                          6
+magne_b6                                6
+mebucain_mint_2_mg_1_mg                 6
+merckformin_xr_1000_mg                  6
+meridian                                6
+metothyrin_10_mg                        6
+mezym_forte_10_000_egyseg               6
+milgamma                                6
+milgamma_n                              6
+milurit_300_mg                          6
+naprosyn_250_mg                         6
+narva_sr_1_5_mg_retard                  6
+naturland_d_vitamin_forte               6
+nebivolol_sandoz_5_mg                   6
+neo_citran                              6
+neo_ferro_folgamma_114_mg_0_8_mg        6
+no_spa_40_mg                            6
+noclaud_50_mg                           6
+nolpaza_20_mg                           6
+nootropil_1200_mg                       6
+normodipine_5_mg                        6
+novo_c_plus                             6
+nurofen_forte_400_mg                    6
+ocutein                                 6
+olicard_60_mg                           6
+panangin_158_mg_140_mg                  6
+pantoprazol_sandoz_40_mg                6
+provera_5_mg                            6
+quamatel_40_mg                          6
+reasec_0_025_mg_2_5_mg                  6
+revicet_akut_10_mg                      6
+rhinathiol_tusso_100_mg                 6
+rubophen_500_mg                         6
+salazopyrin_en_500_mg                   6
+sedatif_pc                              6
+semicillin_500_mg                       6
+sicor_10_mg                             6
+sinupret_forte                          6
+sirdalud_4_mg                           6
+strepfen_8_75_mg                        6
+strepsils                               6
+syncumar_mite_1_mg                      6
+teva_ambrobene_30_mg                    6
+teva_enterobene_2_mg                    6
+theospirex_150_mg                       6
+tricovel_tricoage45                     6
+tritace_5_mg                            6
+tritace_hct_5_mg_25_mg                  6
+urotrin                                 6
+urzinol                                 6
+valeriana_teva                          6
+verospiron_25_mg                        6
+vita_c                                  6
+vitamin_d3_fresenius_1000_ne            6
+voltaren_dolo_rapid_25_mg               6
+xeter_20_mg                             6
+zadex_60_mg                             6
+------------------------------------------------------------
