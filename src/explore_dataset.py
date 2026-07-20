@@ -4,7 +4,7 @@ from collections import Counter
 # ==========================
 # Lokasi dataset
 # ==========================
-DATASET_PATH = Path("data/raw/test/images")
+DATASET_PATH = Path("data/raw/valid/images")
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
