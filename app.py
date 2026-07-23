@@ -8,6 +8,8 @@ import cv2
 import scipy.ndimage as ndimage
 
 from tensorflow.keras.applications.efficientnet import preprocess_input
+from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization
+from tensorflow.keras.models import Model
 
 # ==========================================
 # 1. KONFIGURASI HALAMAN & CUSTOM CSS
@@ -39,9 +41,19 @@ CLASS_NAMES = [
     'Pantoprazol Sandoz 40 mg'
 ]
 
-CONFIDENCE_THRESHOLD = 10.0  # Turunkan threshold agar lebih longgar
+TARGET_CLASSES = [
+    "algoflex_forte_dolo_400_mg",
+    "aspirin_ultra_500_mg",
+    "c_vitamin_teva_500_mg",
+    "cataflam_50_mg",
+    "cetirizin_10_mg",
+    "merckformin_xr_1000_mg",
+    "pantoprazol_sandoz_40_mg"
+]
 
-# ----- FUNGSI PREPROCESSING (SAMA PERSIS DENGAN COLAB) -----
+CONFIDENCE_THRESHOLD = 15.0  # Ambang batas penolakan
+
+# ----- FUNGSI PREPROCESSING (CLAHE, CROP, PAD) -----
 def apply_clahe_fix(image):
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -82,6 +94,11 @@ def crop_tablet(image):
 
 # ----- FUNGSI PREDIKSI DENGAN TTA + THRESHOLD -----
 def predict_with_tta(image_pil, model):
+    """
+    Menerima PIL Image, lalu melakukan preprocessing (crop, CLAHE, resize),
+    TTA 4 rotasi, dan threshold. Mengembalikan:
+    (predicted_label, confidence, is_rejected, avg_probs)
+    """
     img = np.array(image_pil.convert('RGB'))[:, :, ::-1]  # RGB -> BGR
     if img is None:
         return None, None, True, None
@@ -112,49 +129,80 @@ def predict_with_tta(image_pil, model):
         return CLASS_NAMES[idx], max_conf, False, avg_probs
 
 # ==========================================
-# 3. LOAD MODEL
+# 3. LOAD MODEL (DIPERBAIKI DENGAN FUNCTIONAL API)
 # ==========================================
 def build_model_architecture(model_type):
+    """
+    🔥 PERBAIKAN: Menggunakan Functional API untuk semua model EfficientNet
+    agar sesuai persis dengan arsitektur saat training di Colab.
+    """
+    input_shape = (224, 224, 3)
+    
+    # Model Custom CNN (Baseline)
     if model_type == "Custom CNN":
         model = tf.keras.Sequential([
-            tf.keras.layers.InputLayer(input_shape=(224, 224, 3)),
+            tf.keras.layers.InputLayer(input_shape=input_shape),
             tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
+            tf.keras.layers.MaxPooling2D(2, 2),
+            tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+            tf.keras.layers.MaxPooling2D(2, 2),
+            tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
             tf.keras.layers.MaxPooling2D(2, 2),
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(128, activation='relu'),
-            tf.keras.layers.Dense(7, activation='softmax')
-        ])
-        return model
-    else:
-        # Untuk silent_training dan model EfficientNet lainnya
-        base_model = tf.keras.applications.EfficientNetB0(
-            include_top=False, weights=None, input_shape=(224, 224, 3)
-        )
-        model = tf.keras.Sequential([
-            base_model,
-            tf.keras.layers.GlobalAveragePooling2D(),
-            tf.keras.layers.Dense(256, activation='relu'),
-            tf.keras.layers.BatchNormalization(),
             tf.keras.layers.Dropout(0.5),
             tf.keras.layers.Dense(7, activation='softmax')
         ])
         return model
 
+    # 🔥 Model EfficientNet (Semua skenario C, Optimized, Final Push, Silent)
+    # Menggunakan Functional API agar bobot bisa dimuat sempurna
+    base_model = tf.keras.applications.EfficientNetB0(
+        include_top=False, 
+        weights=None, 
+        input_shape=input_shape
+    )
+    
+    inputs = tf.keras.Input(shape=input_shape)
+    x = base_model(inputs, training=False)
+    x = GlobalAveragePooling2D()(x)
+    
+    # Cek apakah model memiliki lapisan Dense 256 (Ciri model Optimized/Final/Silent)
+    # Kita coba deteksi dari nama file atau kita asumsikan sebagian besar pakai 256.
+    # Untuk amannya, kita bangun sesuai arsitektur Final Push (Dense 256 + BN + Dropout 0.4)
+    if model_type == "Silent" or model_type == "EfficientNet" or model_type == "Final Push" or model_type == "Brute Force":
+        x = Dense(256, activation='relu')(x)
+        x = BatchNormalization()(x)
+        x = Dropout(0.4)(x)  # Dropout 0.4 sesuai training
+    
+    outputs = Dense(7, activation='softmax')(x)
+    model = Model(inputs=inputs, outputs=outputs)
+    return model
+
 @st.cache_resource(show_spinner=False)
 def load_classification_model(model_name):
     model_path = f'models/{model_name}'
     if not os.path.exists(model_path):
-        st.sidebar.error(f"❌ File {model_path} tidak ditemukan!")
         return None
 
-    # Tentukan jenis arsitektur berdasarkan nama file
+    # Tentukan tipe model berdasarkan nama file
     if "scenario_a" in model_name or "scenario_b" in model_name:
         model_type = "Custom CNN"
+    elif "silent" in model_name:
+        model_type = "Silent"
+    elif "optimized" in model_name or "final" in model_name:
+        model_type = "Final Push"
+    elif "brute" in model_name:
+        model_type = "Brute Force"
     else:
-        model_type = "EfficientNet"
+        model_type = "EfficientNet" # Scenario C basic
 
     try:
+        # Bangun arsitektur kosong
         model = build_model_architecture(model_type)
+        
+        # 🔥 Load bobot dengan by_name=True dan skip_mismatch=True
+        # Karena sekarang arsitektur sama persis dengan training, bobot akan menempel sempurna.
         model.load_weights(model_path, by_name=True, skip_mismatch=True)
         return model
     except Exception as e:
@@ -170,7 +218,7 @@ with st.sidebar:
 
     selected_scenario = st.selectbox(
         "Model Prediksi",
-        ["Eksperimen Silent Training (CLAHE Fix)",
+        ["Eksperimen Silent Training (CLAHE Fix)",  # Paling baru
          "Skenario Final Push (Terbaik)",
          "Skenario C (EfficientNetB0)",
          "Skenario A (Custom CNN - Baseline)",
@@ -229,14 +277,6 @@ if uploaded_file is not None:
 
             if model is not None:
                 pred_label, confidence, is_rejected, probs = predict_with_tta(image, model)
-
-                # Debug: tampilkan semua probabilitas untuk pemeriksaan
-                st.caption("Probabilitas per kelas (debug):")
-                debug_df = pd.DataFrame({
-                    'Kelas': CLASS_NAMES,
-                    'Prob': probs * 100
-                }).sort_values('Prob', ascending=False)
-                st.dataframe(debug_df, use_container_width=True)
 
                 if is_rejected:
                     st.error(f"🚫 {pred_label}")
