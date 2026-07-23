@@ -1,6 +1,14 @@
+# tensorflow==2.15.0
+# scikit-learn
+# matplotlib
+# seaborn
+# opencv-python
+# pandas
+
+streamlit==1.32.0
 tensorflow==2.15.0
-scikit-learn
-matplotlib
-seaborn
-opencv-python
-pandas
+Pillow==10.2.0
+numpy==1.26.4
+pandas==2.2.0
+streamlit-cropper==0.2.2
+h5py==3.10.0
