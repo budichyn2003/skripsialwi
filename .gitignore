@@ -6,9 +6,9 @@ env/
 data/
 
 # 3. Model Weights / Bobot Model (File biner .h5 sangat besar)
-models/*.h5
-models/*.keras
-models/*.hdf5
+# models/*.h5
+# models/*.keras
+# models/*.hdf5
 
 # 4. Output Eksperimen / Grafik (Bisa di-generate ulang, biar repo bersih)
 outputs/
