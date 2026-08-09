@@ -1,2 +1,3 @@
-[general]
-pythonVersion = "3.11"
+[theme]
+base="dark"
+primaryColor="#F63366"

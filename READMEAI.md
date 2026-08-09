@@ -35,7 +35,7 @@ Buka terminal (PowerShell) di dalam folder root proyek Anda (`SKRIPSI-ALWI`), la
 2. **Aktivasi Virtual Environment:**
    Setelah folder `venv` terbentuk, Anda wajib mengaktifkannya setiap kali akan bekerja. 
    ```powershell
-   . env\Scripts\Activate.ps1
+      venv\Scripts\Activate.ps1
    ```
    *(Catatan: Jika muncul error merah terkait "Execution_Policies" di PowerShell, jalankan perintah `Set-ExecutionPolicy Unrestricted -Scope CurrentUser` terlebih dahulu, lalu ulangi perintah aktivasi di atas).*
    

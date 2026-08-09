@@ -7,9 +7,9 @@ import os
 import cv2
 import scipy.ndimage as ndimage
 
-from tensorflow.keras.applications.efficientnet import preprocess_input
 from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization
 from tensorflow.keras.models import Model
+from tensorflow.keras.applications.efficientnet import preprocess_input
 
 # ==========================================
 # 1. KONFIGURASI HALAMAN & CUSTOM CSS
@@ -23,37 +23,28 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
-    .header-text { text-align: center; color: #1e3a8a; padding-bottom: 2rem; }
+    .stApp { background-color: #0E1117; color: #FAFAFA; }
+    .header-text { text-align: center; color: #4facfe; padding-bottom: 2rem; font-weight: bold; }
+    div[data-testid="stSidebar"] { background-color: #161b22; }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
 # 2. DEFINISI KELAS & FUNGSI PREPROCESSING
 # ==========================================
+# 🔥 PERBAIKAN: Urutan ini disamakan 100% dengan urutan indeks generator di Colab
 CLASS_NAMES = [
-    'Algoflex Forte Dolo 400 mg',
-    'Aspirin Ultra 500 mg',
-    'Vitamin C Teva 500 mg',
-    'Cataflam 50 mg',
-    'Cetirizin 10 mg',
-    'Merckformin XR 1000 mg',
-    'Pantoprazol Sandoz 40 mg'
-]
-
-TARGET_CLASSES = [
-    "algoflex_forte_dolo_400_mg",
-    "aspirin_ultra_500_mg",
-    "c_vitamin_teva_500_mg",
-    "cataflam_50_mg",
-    "cetirizin_10_mg",
-    "merckformin_xr_1000_mg",
-    "pantoprazol_sandoz_40_mg"
+    'Cataflam 50 mg',              # Index 0
+    'Cetirizin 10 mg',             # Index 1
+    'Pantoprazol Sandoz 40 mg',    # Index 2
+    'Vitamin C Teva 500 mg',       # Index 3
+    'Aspirin Ultra 500 mg',        # Index 4
+    'Algoflex Forte Dolo 400 mg',  # Index 5
+    'Merckformin XR 1000 mg'       # Index 6
 ]
 
 CONFIDENCE_THRESHOLD = 15.0  # Ambang batas penolakan
 
-# ----- FUNGSI PREPROCESSING (CLAHE, CROP, PAD) -----
 def apply_clahe_fix(image):
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -78,50 +69,82 @@ def pad_and_resize(image, target_size=(224, 224)):
 
 def crop_tablet(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY)
+    blur = cv2.GaussianBlur(gray, (7, 7), 0)
+    _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
     if not contours:
         return image
+        
     cnt = max(contours, key=cv2.contourArea)
+    image_area = image.shape[0] * image.shape[1]
+    if cv2.contourArea(cnt) > (0.8 * image_area) or cv2.contourArea(cnt) < 1000:
+        return image
+        
     x, y, w, h = cv2.boundingRect(cnt)
-    margin = 10
+    margin = 30
+    
     x = max(0, x - margin)
     y = max(0, y - margin)
     w = min(image.shape[1] - x, w + 2*margin)
     h = min(image.shape[0] - y, h + 2*margin)
-    cropped = image[y:y+h, x:x+w]
-    return cropped
+    
+    return image[y:y+h, x:x+w]
 
-# ----- FUNGSI PREDIKSI DENGAN TTA + THRESHOLD -----
+# ----- FUNGSI PREDIKSI -----
 def predict_with_tta(image_pil, model):
-    """
-    Menerima PIL Image, lalu melakukan preprocessing (crop, CLAHE, resize),
-    TTA 4 rotasi, dan threshold. Mengembalikan:
-    (predicted_label, confidence, is_rejected, avg_probs)
-    """
     img = np.array(image_pil.convert('RGB'))[:, :, ::-1]  # RGB -> BGR
     if img is None:
+        print("❌ ERROR: Gambar tidak terbaca oleh OpenCV!")
         return None, None, True, None
 
-    img = crop_tablet(img)
-    img = apply_clahe_fix(img)
-    img = pad_and_resize(img, (224, 224))
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # 🔥 LOGGING DIKEMBALIKAN KE TERMINAL
+    print("\n" + "="*50)
+    print("🔍 MEMULAI LOG PREPROCESSING GAMBAR")
+    print("="*50)
+    print(f"[1] Gambar Asli       : Shape={img.shape}, Min={img.min()}, Max={img.max()}")
+
+    img_cropped = crop_tablet(img)
+    print(f"[2] Setelah Crop      : Shape={img_cropped.shape}, Min={img_cropped.min()}, Max={img_cropped.max()}")
+    
+    img_clahe = apply_clahe_fix(img_cropped)
+    print(f"[3] Setelah CLAHE     : Shape={img_clahe.shape}, Min={img_clahe.min()}, Max={img_clahe.max()}")
+    
+    img_resized = pad_and_resize(img_clahe, (224, 224))
+    print(f"[4] Setelah Resize/Pad: Shape={img_resized.shape}, Min={img_resized.min()}, Max={img_resized.max()}")
+    
+    img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
 
     angles = [0, 90, 180, 270]
     probs_list = []
+    
+    print("\n⚙️ MULAI PREDIKSI TTA (4 Rotasi)")
     for angle in angles:
         if angle != 0:
             rotated = ndimage.rotate(img_rgb, angle, reshape=False, cval=0)
         else:
             rotated = img_rgb
+            
         img_array = np.expand_dims(rotated, axis=0)
-        img_array = preprocess_input(img_array)
+        
+        # Normalisasi Wajib EfficientNet
+        img_array = np.array(img_array, dtype=np.float32)
+        img_array = preprocess_input(img_array) 
+        
+        print(f"  -> Input Model (Rotasi {angle:03d}°) : Shape={img_array.shape}, Min={img_array.min():.4f}, Max={img_array.max():.4f}, Mean={img_array.mean():.4f}")
+        
         preds = model.predict(img_array, verbose=0)
         probs_list.append(preds[0])
+        print(f"  -> Hasil Prediksi Mentah : {preds[0]}")
+        
     avg_probs = np.mean(probs_list, axis=0)
     max_conf = np.max(avg_probs) * 100
     idx = np.argmax(avg_probs)
+
+    print("\n📊 KESIMPULAN HASIL:")
+    print(f"  -> Rata-rata Probabilitas: {avg_probs}")
+    print(f"  -> Kelas Terpilih        : {CLASS_NAMES[idx]} ({max_conf:.2f}%)")
+    print("="*50 + "\n")
 
     if max_conf < CONFIDENCE_THRESHOLD:
         return "❌ BUKAN OBAT / TIDAK DIKENALI", max_conf, True, avg_probs
@@ -129,18 +152,13 @@ def predict_with_tta(image_pil, model):
         return CLASS_NAMES[idx], max_conf, False, avg_probs
 
 # ==========================================
-# 3. LOAD MODEL (DIPERBAIKI DENGAN FUNCTIONAL API)
+# 3. LOAD MODEL (FLAT ARCHITECTURE FIX)
 # ==========================================
-def build_model_architecture(model_type):
-    """
-    🔥 PERBAIKAN: Menggunakan Functional API untuk semua model EfficientNet
-    agar sesuai persis dengan arsitektur saat training di Colab.
-    """
+def build_model_architecture(model_name):
     input_shape = (224, 224, 3)
     
-    # Model Custom CNN (Baseline)
-    if model_type == "Custom CNN":
-        model = tf.keras.Sequential([
+    if "scenario_a" in model_name or "scenario_b" in model_name:
+        return tf.keras.Sequential([
             tf.keras.layers.InputLayer(input_shape=input_shape),
             tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
             tf.keras.layers.MaxPooling2D(2, 2),
@@ -153,31 +171,23 @@ def build_model_architecture(model_type):
             tf.keras.layers.Dropout(0.5),
             tf.keras.layers.Dense(7, activation='softmax')
         ])
-        return model
-
-    # 🔥 Model EfficientNet (Semua skenario C, Optimized, Final Push, Silent)
-    # Menggunakan Functional API agar bobot bisa dimuat sempurna
+        
     base_model = tf.keras.applications.EfficientNetB0(
         include_top=False, 
         weights=None, 
         input_shape=input_shape
     )
     
-    inputs = tf.keras.Input(shape=input_shape)
-    x = base_model(inputs, training=False)
-    x = GlobalAveragePooling2D()(x)
+    x = base_model.output
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
     
-    # Cek apakah model memiliki lapisan Dense 256 (Ciri model Optimized/Final/Silent)
-    # Kita coba deteksi dari nama file atau kita asumsikan sebagian besar pakai 256.
-    # Untuk amannya, kita bangun sesuai arsitektur Final Push (Dense 256 + BN + Dropout 0.4)
-    if model_type == "Silent" or model_type == "EfficientNet" or model_type == "Final Push" or model_type == "Brute Force":
-        x = Dense(256, activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Dropout(0.4)(x)  # Dropout 0.4 sesuai training
-    
-    outputs = Dense(7, activation='softmax')(x)
-    model = Model(inputs=inputs, outputs=outputs)
-    return model
+    if any(keyword in model_name for keyword in ["silent", "optimized", "final", "brute"]):
+        x = tf.keras.layers.Dense(256, activation='relu')(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Dropout(0.4)(x)
+        
+    outputs = tf.keras.layers.Dense(7, activation='softmax')(x)
+    return tf.keras.models.Model(inputs=base_model.input, outputs=outputs)
 
 @st.cache_resource(show_spinner=False)
 def load_classification_model(model_name):
@@ -185,25 +195,9 @@ def load_classification_model(model_name):
     if not os.path.exists(model_path):
         return None
 
-    # Tentukan tipe model berdasarkan nama file
-    if "scenario_a" in model_name or "scenario_b" in model_name:
-        model_type = "Custom CNN"
-    elif "silent" in model_name:
-        model_type = "Silent"
-    elif "optimized" in model_name or "final" in model_name:
-        model_type = "Final Push"
-    elif "brute" in model_name:
-        model_type = "Brute Force"
-    else:
-        model_type = "EfficientNet" # Scenario C basic
-
     try:
-        # Bangun arsitektur kosong
-        model = build_model_architecture(model_type)
-        
-        # 🔥 Load bobot dengan by_name=True dan skip_mismatch=True
-        # Karena sekarang arsitektur sama persis dengan training, bobot akan menempel sempurna.
-        model.load_weights(model_path, by_name=True, skip_mismatch=True)
+        model = build_model_architecture(model_name)
+        model.load_weights(model_path)
         return model
     except Exception as e:
         st.sidebar.error(f"Error memuat model: {e}")
@@ -218,7 +212,7 @@ with st.sidebar:
 
     selected_scenario = st.selectbox(
         "Model Prediksi",
-        ["Eksperimen Silent Training (CLAHE Fix)",  # Paling baru
+        ["Eksperimen Silent Training (CLAHE Fix)",
          "Skenario Final Push (Terbaik)",
          "Skenario C (EfficientNetB0)",
          "Skenario A (Custom CNN - Baseline)",
@@ -244,7 +238,7 @@ with st.sidebar:
     model = load_classification_model(target_model_file)
 
     if model is None:
-        st.warning(f"⚠️ File `{target_model_file}` belum ditemukan di folder `models/`. Mode Simulasi Aktif.")
+        st.warning(f"⚠️ File `{target_model_file}` belum ditemukan. Mode Simulasi Aktif.")
     else:
         st.success(f"✅ Model `{target_model_file}` Aktif & Terhubung!")
 
@@ -252,7 +246,7 @@ with st.sidebar:
 # 5. KONTEN UTAMA
 # ==========================================
 st.markdown("<h1 class='header-text'>💊 Sistem Klasifikasi Citra Obat Tablet</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #64748b;'>Unggah atau ambil foto obat tablet Anda. Sistem akan memproses dan mengklasifikasikannya secara otomatis.</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Unggah atau ambil foto obat tablet Anda. Sistem akan memproses dan mengklasifikasikannya secara otomatis.</p>", unsafe_allow_html=True)
 
 input_method = st.radio("Pilih Metode Masukan Citra:", ["Unggah Berkas (File Uploader)", "Gunakan Kamera (Kamera Langsung)"], horizontal=True)
 
@@ -286,7 +280,6 @@ if uploaded_file is not None:
                     st.info(f"**Tingkat Keyakinan (Confidence):** {confidence:.2f}%")
                     st.progress(int(confidence))
             else:
-                # Mode simulasi
                 np.random.seed(42)
                 dummy_raw = np.random.rand(len(CLASS_NAMES))
                 probs = dummy_raw / np.sum(dummy_raw)
@@ -297,7 +290,6 @@ if uploaded_file is not None:
                 st.info(f"**Tingkat Keyakinan (Confidence):** {confidence:.2f}%")
                 st.progress(int(confidence))
 
-            # Tampilkan top-3 probabilitas
             st.markdown("#### Detail Probabilitas Top-3")
             if probs is not None:
                 pred_df = pd.DataFrame({
